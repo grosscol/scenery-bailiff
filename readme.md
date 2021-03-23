@@ -5,11 +5,14 @@ They are presented together here for convenience.
 ## Flask App (API)
 The flask app has resources that require auth.
 
+- Authenticates user via oauth2
+- Tracks logged in user via session
+
 ## Vue App (UI)
 The Vue client has visualizations for the protected resources.
 
-- Responsible for taking grant and getting authorization token
-- Responsible for providing token during requests to flask api.
+- Has callback route that handles talking to api callback endpoint.
+- Displays logged in status
 
 ## Run
 1. Start flask app
