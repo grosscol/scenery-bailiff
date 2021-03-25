@@ -1,5 +1,8 @@
-# Ignore client secrets
+# Ignore client secret in flask app
 client?secret.json
+
+# Ingore client id in vue app
+client?config.js
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

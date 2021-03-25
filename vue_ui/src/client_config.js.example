@@ -1,0 +1,3 @@
+// Git ignore and use client_config.js to avoid committing client id to repo
+let CLIENT_ID = "012345678910-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com"
+export { CLIENT_ID }
