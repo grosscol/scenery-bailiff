@@ -1,12 +1,12 @@
-from flask import Flask, jsonify, url_for, request, redirect, session
+from flask import Flask, jsonify, url_for, request, redirect, session, abort
 from flask_login import (LoginManager, UserMixin, current_user, login_user, logout_user,
                          login_required)
 from datetime import timedelta
 import requests
 import json
 import google_auth_oauthlib.flow
-
-import pdb
+from oauth2client import client
+from flask_cors import CORS
 
 # Dumb in memory users implementation
 USERS = []
@@ -21,6 +21,10 @@ CLIENT_SECRETS_FILENAME = 'client_secret.json'
 
 # Create app
 app = Flask(__name__)
+
+# Allows ajax requests from host serving UI.
+# Origin cannnot be '*' to use session cookie in requests.
+CORS(app, origins=['http://localhost:8080', 'http://127.0.0.1:8080'], supports_credentials=True)
 
 # Set the secret key to some random bytes
 app.secret_key = b'exampled34db33f'
@@ -103,16 +107,17 @@ def auth_status():
     return jsonify(data)
 
 
+# Supporting: Web server application flow
 def build_authorization_url():
     flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
         CLIENT_SECRETS_FILENAME,
         scopes=['https://www.googleapis.com/auth/userinfo.email'])
-
     flow.redirect_uri = url_for('.auth_callback', _external=True)
     return flow.authorization_url(access_type='offline', prompt='consent',
                                   include_granted_scopes='true')
 
 
+# End point for starting Web server application flow
 @app.route('/authorize')
 def authorize():
     if current_user.is_anonymous:
@@ -124,6 +129,7 @@ def authorize():
         return auth_status()
 
 
+# End point for completing Web server application flow
 @app.route('/auth_callback')
 def auth_callback():
     # Retrieve state from session to verify the incoming callback request
@@ -164,7 +170,33 @@ def auth_callback():
     return auth_status()
 
 
-@app.route('/logout')
+# End point for completing Server side flow.
+@app.route('/auth_code', methods=['POST'])
+def auth_code():
+    # Get code from post data
+    auth_code = request.json.get('code')
+
+    if not request.headers.get('X-Requested-With'):
+        abort(403)
+
+    # Exchange auth code for access token, refresh token, and ID token
+    credentials = client.credentials_from_clientsecrets_and_code(
+        CLIENT_SECRETS_FILENAME, ['email'], auth_code)
+
+    email = credentials.id_token['email']
+
+    # Lookup or store user in user persistence.
+    user = load_user(email) or create_user(email)
+
+    # Use flask-login to persist login via session
+    login_user(user, remember=True, duration=timedelta(hours=1))
+
+    # Store refresh token in session to allow revoking token programatically.
+    session['refresh_token'] = credentials.refresh_token
+    return auth_status()
+
+
+@app.route('/logout', methods=['GET', 'POST'])
 def logout():
     logout_user()
     return auth_status()
