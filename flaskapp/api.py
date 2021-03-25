@@ -53,7 +53,7 @@ def create_user(user_id):
     return(user)
 
 
-@app.route('/routes')
+@app.route('/')
 def routes():
     return '''
         <ul>
